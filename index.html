@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UKS Connect - Dashboard Kesehatan Sekolah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.368.0/lucide.min.css" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* Dark background */
+            color: #d1d5db; /* Light text */
+        }
+        .sidebar-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .sidebar-item:hover, .sidebar-item.active {
+            background-color: #4f46e5; /* Indigo */
+            color: white;
+            transform: translateX(4px);
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .modal-content {
+            background-color: #1f2937; /* Darker card */
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #374151;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .table-auto th, .table-auto td {
+            padding: 12px 16px;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .btn-danger {
+            background-color: #dc2626;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .btn-danger:hover {
+             background-color: #b91c1c;
+        }
+        .btn-secondary {
+            background-color: #374151;
+            color: #d1d5db;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #4b5563;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4338ca; }
+    </style>
+</head>
+<body>
+
+    <!-- Auth Container -->
+    <div id="authContainer" class="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+        <!-- Landing Page -->
+        <div id="landingPage" class="text-center max-w-2xl">
+            <div class="flex items-center justify-center mb-6 text-indigo-400">
+                <i data-lucide="heart-pulse" class="h-12 w-12 mr-4"></i>
+                <h1 class="text-5xl font-bold text-gray-100">UKS Connect</h1>
+            </div>
+            <p class="text-xl text-gray-400 mb-8">Platform digital terintegrasi untuk manajemen Usaha Kesehatan Sekolah yang modern, proaktif, dan efisien.</p>
+            
+            <div class="bg-gray-800 p-8 rounded-xl shadow-lg text-left mb-8 border border-gray-700">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-100">Apa itu UKS?</h2>
+                <p class="text-gray-300">Usaha Kesehatan Sekolah (UKS) adalah program pemerintah untuk meningkatkan pelayanan kesehatan, pendidikan kesehatan, dan pembinaan lingkungan sekolah sehat. Tujuannya adalah untuk membentuk perilaku hidup sehat dan derajat kesehatan siswa yang optimal.</p>
+            </div>
+
+            <button onclick="showAuthPage('loginPage')" class="w-full max-w-xs btn-primary font-bold py-3 px-4 rounded-lg text-lg">Login sebagai Admin</button>
+        </div>
+
+        <!-- Login Page -->
+        <div id="loginPage" class="hidden w-full max-w-sm">
+            <div class="bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-700">
+                 <div class="flex items-center justify-center mb-6 text-indigo-400">
+                    <i data-lucide="heart-pulse" class="h-8 w-8 mr-3"></i>
+                    <h2 class="text-3xl font-bold text-gray-100">Admin Login</h2>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="mb-4">
+                        <label for="username" class="block text-gray-300 mb-2 font-medium">Username</label>
+                        <input type="text" id="username" class="w-full p-3 border rounded-lg bg-gray-700 text-gray-100 border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-gray-300 mb-2 font-medium">Password</label>
+                        <input type="password" id="password" class="w-full p-3 border rounded-lg bg-gray-700 text-gray-100 border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <p id="loginError" class="text-red-400 text-sm text-center mb-4 hidden">Username atau password salah.</p>
+                    <button type="submit" class="w-full btn-primary font-bold py-3 px-4 rounded-lg">Login</button>
+                </form>
+                <button onclick="showAuthPage('landingPage')" class="w-full mt-4 text-sm text-gray-400 hover:text-indigo-400">Kembali ke Halaman Awal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="appContainer" class="hidden min-h-screen w-full lg:flex bg-gray-900">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="w-64 bg-gray-800 text-gray-300 p-6 flex flex-col flex-shrink-0 fixed lg:relative inset-y-0 left-0 z-40 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div class="flex items-center mb-10 text-gray-100">
+                <i data-lucide="heart-pulse" class="mr-3 h-8 w-8 text-indigo-400"></i>
+                <h1 class="text-2xl font-bold">UKS Connect</h1>
+            </div>
+            <nav class="flex-grow">
+                <ul>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium active" onclick="showSection('dashboard')"><i data-lucide="layout-dashboard" class="mr-3"></i>Dashboard</a></li>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="showSection('dataSiswa')"><i data-lucide="users" class="mr-3"></i>Data Siswa</a></li>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="showSection('catatanSakit')"><i data-lucide="clipboard-list" class="mr-3"></i>Catatan Sakit</a></li>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="showSection('imunisasi')"><i data-lucide="syringe" class="mr-3"></i>Status Imunisasi</a></li>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="showSection('inventaris')"><i data-lucide="archive" class="mr-3"></i>Inventaris UKS</a></li>
+                    <li><a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="showSection('kegiatan')"><i data-lucide="file-text" class="mr-3"></i>Laporan Kegiatan</a></li>
+                </ul>
+            </nav>
+            <div>
+                 <a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium mb-2" onclick="showSection('profilAdmin')"><i data-lucide="user-cog" class="mr-3"></i>Profil Admin</a>
+                 <a href="#" class="sidebar-item flex items-center p-3 rounded-lg font-medium" onclick="handleLogout()"><i data-lucide="log-out" class="mr-3"></i>Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Sidebar Overlay for Mobile -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 sm:p-8 overflow-y-auto bg-gray-900 w-full lg:w-auto flex flex-col justify-between">
+            <div>
+                <!-- Mobile Header -->
+                <header class="lg:hidden flex justify-between items-center mb-6">
+                    <button onclick="openSidebar()" class="p-2 rounded-md text-gray-300 hover:bg-gray-700">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div id="currentDateDisplayMobile" class="text-sm text-gray-400"></div>
+                </header>
+                
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="section active">
+                    <div class="hidden lg:flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-100">Dashboard UKS</h2>
+                        <div id="currentDateDisplay" class="text-lg text-gray-400"></div>
+                    </div>
+                    <div class="mb-8">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-200">Pengumuman Stok</h3>
+                        <div id="stokHabisContainer" class="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700 space-y-3">
+                            <!-- Announcements will be injected here -->
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                        <!-- Stat cards -->
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex items-center">
+                            <div class="bg-indigo-900/50 p-4 rounded-full mr-4"><i data-lucide="users" class="text-indigo-400"></i></div>
+                            <div><p class="text-gray-400">Total Siswa</p><p class="text-2xl font-bold text-gray-100" id="totalSiswaStat">0</p></div>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex items-center">
+                            <div class="bg-red-900/50 p-4 rounded-full mr-4"><i data-lucide="user-check" class="text-red-400"></i></div>
+                            <div><p class="text-gray-400">Sakit Hari Ini</p><p class="text-2xl font-bold text-gray-100" id="sakitHariIniStat">0</p></div>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex items-center">
+                            <div class="bg-yellow-900/50 p-4 rounded-full mr-4"><i data-lucide="archive" class="text-yellow-400"></i></div>
+                            <div><p class="text-gray-400">Total Kunjungan Sakit</p><p class="text-2xl font-bold text-gray-100" id="totalSakitStat">0</p></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <h3 class="font-semibold text-gray-200 mb-2">Siswa Paling Sering Sakit</h3>
+                            <p class="text-xl font-bold text-indigo-400" id="topSakitSiswa">-</p>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <h3 class="font-semibold text-gray-200 mb-2">Keluhan Paling Umum</h3>
+                            <p class="text-xl font-bold text-indigo-400" id="topKeluhan">-</p>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                            <h3 class="font-semibold text-gray-200 mb-2">Stok Obat Kritis</h3>
+                            <p class="text-xl font-bold text-red-400" id="stokKritisStat">0</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-200">Analisis Tren Kunjungan Mingguan</h3>
+                        <canvas id="visitChart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Data Siswa Section -->
+                <section id="dataSiswa" class="section">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-100">Data Siswa</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button class="btn-danger py-2 px-4 rounded-lg flex items-center" onclick="handleMassDelete()"><i data-lucide="trash-2" class="mr-2"></i>Hapus Terpilih</button>
+                            <label for="excel_input" class="btn-secondary py-2 px-4 rounded-lg flex items-center cursor-pointer"><i data-lucide="file-up" class="mr-2"></i>Impor Excel</label>
+                            <input type="file" id="excel_input" class="hidden" accept=".xlsx, .xls" onchange="handleExcelImport(event)">
+                            <button class="btn-primary py-2 px-4 rounded-lg flex items-center" onclick="openModal('modalSiswa')"><i data-lucide="plus" class="mr-2"></i>Tambah Siswa</button>
+                        </div>
+                    </div>
+                    <div id="dataSiswaContainer" class="space-y-4">
+                        <!-- Student data grouped by class will be injected here -->
+                    </div>
+                </section>
+                
+                <section id="catatanSakit" class="section">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-100">Catatan Siswa Sakit</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToPdf('tabelDataSakit', 'Laporan Catatan Sakit', 'l')"><i data-lucide="file-type-2" class="mr-2"></i>PDF</button>
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToExcel('tabelDataSakit', 'Laporan Catatan Sakit')"><i data-lucide="file-spreadsheet" class="mr-2"></i>Excel</button>
+                            <button class="btn-primary py-2 px-4 rounded-lg flex items-center" onclick="openModal('modalSakit')"><i data-lucide="plus" class="mr-2"></i>Tambah Catatan</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                        <table class="w-full text-left table-auto" id="tabelDataSakit">
+                            <thead class="bg-gray-700"><tr class="text-gray-300"><th>Tanggal</th><th>Nama Siswa</th><th>Kelas</th><th>Keluhan</th><th>Tindakan</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <tbody id="tabelSakit"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="imunisasi" class="section">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-100">Catatan Status Imunisasi</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToPdf('tabelDataImunisasi', 'Laporan Imunisasi')"><i data-lucide="file-type-2" class="mr-2"></i>PDF</button>
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToExcel('tabelDataImunisasi', 'Laporan Imunisasi')"><i data-lucide="file-spreadsheet" class="mr-2"></i>Excel</button>
+                            <button class="btn-primary py-2 px-4 rounded-lg flex items-center" onclick="openModal('modalImunisasi')"><i data-lucide="plus" class="mr-2"></i>Tambah Catatan</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                        <table class="w-full text-left table-auto" id="tabelDataImunisasi">
+                            <thead class="bg-gray-700"><tr class="text-gray-300"><th>Nama Siswa</th><th>Kelas</th><th>Jenis Imunisasi</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <tbody id="tabelImunisasi"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="inventaris" class="section">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-100">Inventaris Sarana & Prasarana</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToPdf('tabelDataInventaris', 'Laporan Inventaris')"><i data-lucide="file-type-2" class="mr-2"></i>PDF</button>
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToExcel('tabelDataInventaris', 'Laporan Inventaris')"><i data-lucide="file-spreadsheet" class="mr-2"></i>Excel</button>
+                            <button class="btn-primary py-2 px-4 rounded-lg flex items-center" onclick="openModal('modalInventaris')"><i data-lucide="plus" class="mr-2"></i>Tambah Barang</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                        <table class="w-full text-left table-auto" id="tabelDataInventaris">
+                            <thead class="bg-gray-700"><tr class="text-gray-300"><th>Nama Barang</th><th>Jenis</th><th>Jumlah</th><th>Satuan</th><th>Status</th><th>Aksi</th></tr></thead>
+                            <tbody id="tabelInventaris"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="kegiatan" class="section">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-100">Laporan Kegiatan UKS</h2>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToPdf('tabelDataKegiatan', 'Laporan Kegiatan UKS', 'l')"><i data-lucide="file-type-2" class="mr-2"></i>PDF</button>
+                            <button class="btn-secondary py-2 px-4 rounded-lg flex items-center" onclick="exportToExcel('tabelDataKegiatan', 'Laporan Kegiatan UKS')"><i data-lucide="file-spreadsheet" class="mr-2"></i>Excel</button>
+                            <button class="btn-primary py-2 px-4 rounded-lg flex items-center" onclick="openModal('modalKegiatan')"><i data-lucide="plus" class="mr-2"></i>Tambah Kegiatan</button>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 overflow-x-auto">
+                        <table class="w-full text-left table-auto" id="tabelDataKegiatan">
+                            <thead class="bg-gray-700"><tr class="text-gray-300"><th>Tanggal</th><th>Nama Kegiatan</th><th>Penanggung Jawab</th><th>Instansi</th><th>Aksi</th></tr></thead>
+                            <tbody id="tabelKegiatan"></tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <section id="profilAdmin" class="section">
+                    <h2 class="text-3xl font-bold mb-6 text-gray-100">Profil Admin</h2>
+                    <div class="max-w-md bg-gray-800 p-8 rounded-xl shadow-lg border border-gray-700">
+                        <form id="formProfil" onsubmit="handleUpdateProfile(event)">
+                            <div class="mb-4">
+                                <label for="adminUsername" class="block text-gray-300 mb-2 font-medium">Username</label>
+                                <input type="text" id="adminUsername" class="w-full p-3 border rounded-lg bg-gray-700 text-gray-100 border-gray-600" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="adminPassword" class="block text-gray-300 mb-2 font-medium">Password Baru (Opsional)</label>
+                                <input type="password" id="adminPassword" class="w-full p-3 border rounded-lg bg-gray-700 text-gray-100 border-gray-600">
+                            </div>
+                            <p id="profileUpdateSuccess" class="text-green-400 text-sm text-center mb-4 hidden">Profil berhasil diperbarui!</p>
+                            <button type="submit" class="w-full btn-primary font-bold py-3 px-4 rounded-lg">Update Profil</button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+            
+            <footer class="mt-8 pt-4 border-t border-gray-700 text-center text-sm text-gray-500">
+                <p>UKS Connect &copy; <span id="footerYear"></span> - Muhammad Hasratul</p>
+            </footer>
+        </main>
+    </div>
+    
+    <!-- Modals -->
+    <div id="modalSiswa" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-100" id="modalSiswaTitle">Tambah Siswa Baru</h3>
+            <form id="formSiswa" onsubmit="handleFormSiswa(event)">
+                <input type="hidden" id="siswaId">
+                <div class="mb-4"><label for="nama" class="block text-gray-300 mb-1">Nama Lengkap</label><input type="text" id="nama" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="nisn" class="block text-gray-300 mb-1">NISN</label><input type="text" id="nisn" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="jenisKelamin" class="block text-gray-300 mb-1">Jenis Kelamin</label><select id="jenisKelamin" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required><option>Laki-laki</option><option>Perempuan</option></select></div>
+                <div class="mb-4"><label for="kelas" class="block text-gray-300 mb-1">Kelas</label><input type="text" id="kelas" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" placeholder="Contoh: 10A" required></div>
+                <div class="flex justify-end mt-6"><button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="closeModal('modalSiswa')">Batal</button><button type="submit" class="btn-primary py-2 px-4 rounded-lg">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalSakit" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-100" id="modalSakitTitle">Tambah Catatan Sakit</h3>
+            <form id="formSakit" onsubmit="handleFormSakit(event)">
+                <input type="hidden" id="sakitId">
+                <div class="mb-4"><label for="tanggalSakit" class="block text-gray-300 mb-1">Tanggal</label><input type="date" id="tanggalSakit" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="selectKelasSakit" class="block text-gray-300 mb-1">Pilih Kelas</label><select id="selectKelasSakit" onchange="populateSiswaByKelas('Sakit')" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></select></div>
+                <div class="mb-4"><label for="selectSiswaSakit" class="block text-gray-300 mb-1">Nama Siswa</label><select id="selectSiswaSakit" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></select></div>
+                <div class="mb-4"><label for="keluhan" class="block text-gray-300 mb-1">Keluhan</label><textarea id="keluhan" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" rows="2" required></textarea></div>
+                <div class="mb-4"><label for="tindakan" class="block text-gray-300 mb-1">Tindakan</label><textarea id="tindakan" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" rows="2" required></textarea></div>
+                <div class="mb-4"><label for="buktiFoto" class="block text-gray-300 mb-1">Foto Bukti (Opsional)</label><input type="file" id="buktiFoto" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"></div>
+                <div class="mb-4"><label for="statusSakit" class="block text-gray-300 mb-1">Status</label><select id="statusSakit" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required><option>Kembali ke Kelas</option><option>Sudah Pulih</option><option>Dijemput</option><option>Dirujuk</option></select></div>
+                <div class="flex justify-end mt-6"><button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="closeModal('modalSakit')">Batal</button><button type="submit" class="btn-primary py-2 px-4 rounded-lg">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="modalImunisasi" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-100" id="modalImunisasiTitle">Tambah Catatan Imunisasi</h3>
+            <form id="formImunisasi" onsubmit="handleFormImunisasi(event)">
+                <input type="hidden" id="imunisasiId">
+                <div class="mb-4"><label for="selectKelasImunisasi" class="block text-gray-300 mb-1">Pilih Kelas</label><select id="selectKelasImunisasi" onchange="populateSiswaByKelas('Imunisasi')" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></select></div>
+                <div class="mb-4"><label for="selectSiswaImunisasi" class="block text-gray-300 mb-1">Nama Siswa</label><select id="selectSiswaImunisasi" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></select></div>
+                <div class="mb-4"><label for="jenisImunisasi" class="block text-gray-300 mb-1">Jenis Imunisasi</label><input type="text" id="jenisImunisasi" placeholder="Contoh: Campak, DT" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="tanggalImunisasi" class="block text-gray-300 mb-1">Tanggal</label><input type="date" id="tanggalImunisasi" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="statusImunisasi" class="block text-gray-300 mb-1">Status</label><select id="statusImunisasi" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required><option>Sudah</option><option>Tertunda</option></select></div>
+                <div class="flex justify-end mt-6"><button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="closeModal('modalImunisasi')">Batal</button><button type="submit" class="btn-primary py-2 px-4 rounded-lg">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalInventaris" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-100" id="modalInventarisTitle">Tambah Barang Inventaris</h3>
+            <form id="formInventaris" onsubmit="handleFormInventaris(event)">
+                <input type="hidden" id="inventarisId">
+                <div class="mb-4"><label for="namaBarang" class="block text-gray-300 mb-1">Nama Barang</label><input type="text" id="namaBarang" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="jenisBarang" class="block text-gray-300 mb-1">Jenis Barang</label><select id="jenisBarang" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required><option>Obat</option><option>Peralatan Medis</option><option>P3K</option><option>Lainnya</option></select></div>
+                <div class="mb-4"><label for="jumlahBarang" class="block text-gray-300 mb-1">Jumlah</label><input type="number" id="jumlahBarang" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="satuanBarang" class="block text-gray-300 mb-1">Satuan</label><input type="text" id="satuanBarang" placeholder="Pcs, Botol, Tablet" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="statusBarang" class="block text-gray-300 mb-1">Status</label><select id="statusBarang" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required><option>Tersedia</option><option>Kritis</option><option>Habis</option></select></div>
+                <div class="flex justify-end mt-6"><button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="closeModal('modalInventaris')">Batal</button><button type="submit" class="btn-primary py-2 px-4 rounded-lg">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="modalKegiatan" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-100" id="modalKegiatanTitle">Tambah Kegiatan</h3>
+            <form id="formKegiatan" onsubmit="handleFormKegiatan(event)">
+                <input type="hidden" id="kegiatanId">
+                 <div class="mb-4"><label for="tanggalKegiatan" class="block text-gray-300 mb-1">Tanggal Kegiatan</label><input type="date" id="tanggalKegiatan" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="captionKegiatan" class="block text-gray-300 mb-1">Nama Kegiatan</label><input type="text" id="captionKegiatan" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="penanggungJawab" class="block text-gray-300 mb-1">Penanggung Jawab</label><input type="text" id="penanggungJawab" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="asalInstansi" class="block text-gray-300 mb-1">Asal Instansi</label><input type="text" id="asalInstansi" class="w-full p-2 border rounded-md bg-gray-600 text-gray-100 border-gray-500" required></div>
+                <div class="mb-4"><label for="fotoKegiatan" class="block text-gray-300 mb-1">Foto Bukti</label><input type="file" id="fotoKegiatan" accept="image/*" class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"></div>
+                <div class="flex justify-end mt-6"><button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="closeModal('modalKegiatan')">Batal</button><button type="submit" class="btn-primary py-2 px-4 rounded-lg">Simpan</button></div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalLihatFoto" class="modal-backdrop hidden">
+        <div class="modal-content"><img id="fotoBuktiDetail" src="" class="max-h-[80vh] w-auto rounded-lg mx-auto"><button class="w-full mt-4 text-sm text-gray-400 hover:text-indigo-400" onclick="closeModal('modalLihatFoto')">Tutup</button></div>
+    </div>
+
+    <div id="modalKonfirmasi" class="modal-backdrop hidden">
+        <div class="modal-content max-w-sm">
+             <h3 class="text-xl font-bold mb-2 text-gray-100">Konfirmasi Hapus</h3>
+             <p class="text-gray-400 mb-6" id="konfirmasiText">Apakah Anda yakin ingin menghapus data ini?</p>
+             <div class="flex justify-end">
+                 <button type="button" class="py-2 px-4 rounded-lg mr-2 border border-gray-500 text-gray-300" onclick="cancelDelete()">Batal</button>
+                 <button type="button" id="confirmDeleteButton" class="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">Hapus</button>
+             </div>
+        </div>
+    </div>
+
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        // --- LOCAL STORAGE HELPERS ---
+        const loadFromLocalStorage = (key, defaultValue) => {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : defaultValue;
+        };
+        const saveToLocalStorage = (key, data) => {
+            localStorage.setItem(key, JSON.stringify(data));
+        };
+
+        // --- DATA SAMPLE & STATE ---
+        let adminCredentials = loadFromLocalStorage('uks_adminCredentials', { username: 'admin', password: 'admin123' });
+        
+        let students = loadFromLocalStorage('uks_students', [
+            { id: 1, nama: 'Budi Santoso', nisn: '1234567890', jenisKelamin: 'Laki-laki', kelas: '11A' },
+            { id: 2, nama: 'Citra Lestari', nisn: '0987654321', jenisKelamin: 'Perempuan', kelas: '10B' },
+             { id: 3, nama: 'Dian Permata', nisn: '5566778899', jenisKelamin: 'Perempuan', kelas: '11A' },
+        ]);
+        
+        let healthLogs = loadFromLocalStorage('uks_healthLogs', [
+            { id: 1, tanggal: '2025-10-04', namaSiswa: 'Budi Santoso', kelas: '11A', keluhan: 'Pusing', tindakan: 'Istirahat di UKS, diberi teh hangat', status: 'Sudah Pulih', buktiFoto: null },
+            { id: 2, tanggal: '2025-10-03', namaSiswa: 'Citra Lestari', kelas: '10B', keluhan: 'Luka lecet', tindakan: 'Dibersihkan dan diberi antiseptik', status: 'Kembali ke Kelas', buktiFoto: null },
+        ]);
+
+        let immunizations = loadFromLocalStorage('uks_immunizations', [
+            { id: 1, namaSiswa: 'Budi Santoso', kelas: '11A', jenis: 'Campak', tanggal: '2023-08-15', status: 'Sudah' },
+        ]);
+        
+        let inventory = loadFromLocalStorage('uks_inventory', [
+            { id: 1, nama: 'Paracetamol', jenis: 'Obat', jumlah: 25, satuan: 'Tablet', status: 'Tersedia' },
+            { id: 2, nama: 'Perban Gulung', jenis: 'P3K', jumlah: 0, satuan: 'Pcs', status: 'Habis' },
+        ]);
+
+        let uksActivities = loadFromLocalStorage('uks_activities', [
+            { id: 1, tanggal: '2025-09-10', caption: 'Penyuluhan Kesehatan Gigi', penanggungJawab: 'Drg. Anisa', instansi: 'Puskesmas Setempat', url: null },
+        ]);
+
+        let deleteTarget = { type: null, ids: [] };
+        let chartInstance = null;
+
+        // --- RENDER FUNCTIONS ---
+        function renderDataSiswaByClass() {
+            const container = document.getElementById('dataSiswaContainer');
+            container.innerHTML = '';
+
+            const groupedByClass = students.reduce((acc, student) => {
+                (acc[student.kelas] = acc[student.kelas] || []).push(student);
+                return acc;
+            }, {});
+            
+            const sortedClasses = Object.keys(groupedByClass).sort();
+
+            if (sortedClasses.length === 0) {
+                container.innerHTML = `<div class="bg-gray-800 p-6 rounded-xl text-center text-gray-400">Belum ada data siswa.</div>`;
+                return;
+            }
+
+            sortedClasses.forEach(className => {
+                const classContainer = document.createElement('div');
+                classContainer.className = 'bg-gray-800 rounded-xl shadow-lg border border-gray-700 overflow-hidden';
+                
+                const summary = document.createElement('div');
+                summary.className = 'p-4 cursor-pointer flex justify-between items-center';
+                summary.innerHTML = `<h3 class="text-xl font-bold text-gray-100">Kelas ${className}</h3><i data-lucide="chevron-down" class="transition-transform"></i>`;
+                
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'p-4 hidden';
+
+                let tableHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left table-auto">
+                            <thead class="bg-gray-700/50"><tr class="text-gray-300">
+                                <th><input type="checkbox" onchange="toggleSelectAll(this, '${className}')" /></th>
+                                <th>Nama</th><th>NISN</th><th>Jenis Kelamin</th><th>Aksi</th>
+                            </tr></thead>
+                            <tbody>`;
+                
+                groupedByClass[className].forEach(s => {
+                    tableHTML += `
+                        <tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                            <td><input type="checkbox" class="mass-delete-checkbox" data-class="${className}" value="${s.id}" /></td>
+                            <td class="text-gray-100">${s.nama}</td>
+                            <td class="text-gray-400">${s.nisn}</td>
+                            <td class="text-gray-400">${s.jenisKelamin}</td>
+                            <td>
+                                <button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="event.stopPropagation(); editSiswa(${s.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                            </td>
+                        </tr>`;
+                });
+                
+                tableHTML += `</tbody></table></div>`;
+                tableContainer.innerHTML = tableHTML;
+                
+                summary.onclick = () => {
+                    tableContainer.classList.toggle('hidden');
+                    const icon = summary.querySelector('svg');
+                    if(icon) icon.classList.toggle('rotate-180');
+                };
+
+                classContainer.appendChild(summary);
+                classContainer.appendChild(tableContainer);
+                container.appendChild(classContainer);
+            });
+            lucide.createIcons();
+        }
+
+        function renderTabelSakit() {
+            const tbody = document.getElementById('tabelSakit');
+            tbody.innerHTML = '';
+            healthLogs.forEach(log => {
+                let statusClass = 'bg-gray-600 text-gray-200';
+                if(log.status === 'Sudah Pulih' || log.status === 'Kembali ke Kelas') statusClass = 'bg-green-800/50 text-green-300';
+                else if(log.status === 'Dijemput') statusClass = 'bg-yellow-800/50 text-yellow-300';
+                else if(log.status === 'Dirujuk') statusClass = 'bg-red-800/50 text-red-300';
+                
+                const buktiButton = log.buktiFoto ? `<button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="lihatFoto('${log.buktiFoto}')"><i data-lucide="camera" class="w-4 h-4"></i></button>` : ' - ';
+
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="text-gray-400">${log.tanggal}</td>
+                        <td class="text-gray-100">${log.namaSiswa}</td>
+                        <td class="text-gray-400">${log.kelas}</td>
+                        <td class="text-gray-400">${log.keluhan}</td>
+                        <td class="text-gray-400">${log.tindakan}</td>
+                        <td><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${log.status}</span></td>
+                        <td>
+                            ${buktiButton}
+                            <button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="editSakit(${log.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                            <button class="text-red-400 hover:text-red-300 p-1" onclick="deleteData('sakit', [${log.id}])"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            lucide.createIcons();
+        }
+        
+        function renderTabelImunisasi() {
+            const tbody = document.getElementById('tabelImunisasi');
+            tbody.innerHTML = '';
+            immunizations.forEach(item => {
+                const statusClass = item.status === 'Sudah' ? 'bg-green-800/50 text-green-300' : 'bg-red-800/50 text-red-300';
+                tbody.innerHTML += `<tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                    <td class="text-gray-100">${item.namaSiswa}</td>
+                     <td class="text-gray-400">${item.kelas}</td>
+                    <td class="text-gray-400">${item.jenis}</td>
+                    <td class="text-gray-400">${item.tanggal}</td>
+                    <td><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${item.status}</span></td>
+                    <td>
+                        <button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="editImunisasi(${item.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                        <button class="text-red-400 hover:text-red-300 p-1" onclick="deleteData('imunisasi', [${item.id}])"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                    </tr>`;
+            });
+             lucide.createIcons();
+        }
+
+        function renderTabelInventaris() {
+            const tbody = document.getElementById('tabelInventaris');
+            tbody.innerHTML = '';
+            inventory.forEach(item => {
+                 let statusClass = 'bg-gray-600 text-gray-200';
+                 if(item.status === 'Tersedia') statusClass = 'bg-green-800/50 text-green-300';
+                 else if(item.status === 'Kritis') statusClass = 'bg-yellow-800/50 text-yellow-300';
+                 else if(item.status === 'Habis') statusClass = 'bg-red-800/50 text-red-300';
+                tbody.innerHTML += `<tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                    <td class="text-gray-100">${item.nama}</td>
+                    <td class="text-gray-400">${item.jenis}</td>
+                    <td class="text-gray-400">${item.jumlah}</td>
+                    <td class="text-gray-400">${item.satuan}</td>
+                    <td><span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${item.status}</span></td>
+                    <td>
+                        <button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="editInventaris(${item.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                        <button class="text-red-400 hover:text-red-300 p-1" onclick="deleteData('inventaris', [${item.id}])"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                    </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function renderTabelKegiatan() {
+            const tbody = document.getElementById('tabelKegiatan');
+            tbody.innerHTML = '';
+            uksActivities.forEach(item => {
+                 const buktiButton = item.url ? `<button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="lihatFoto('${item.url}')"><i data-lucide="camera" class="w-4 h-4"></i></button>` : ' - ';
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="text-gray-400">${item.tanggal}</td>
+                        <td class="text-gray-100">${item.caption}</td>
+                         <td class="text-gray-400">${item.penanggungJawab}</td>
+                          <td class="text-gray-400">${item.instansi}</td>
+                        <td>
+                            ${buktiButton}
+                            <button class="text-indigo-400 hover:text-indigo-300 p-1" onclick="editKegiatan(${item.id})"><i data-lucide="edit" class="w-4 h-4"></i></button>
+                            <button class="text-red-400 hover:text-red-300 p-1" onclick="deleteData('kegiatan', [${item.id}])"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            lucide.createIcons();
+        }
+
+        function renderStokHabisAnnouncements() {
+            const container = document.getElementById('stokHabisContainer');
+            const stokHabis = inventory.filter(item => item.status === 'Habis');
+
+            if (stokHabis.length > 0) {
+                container.innerHTML = stokHabis.map(item => `
+                    <div class="bg-red-900/50 border border-red-700 p-4 rounded-lg flex items-center">
+                        <i data-lucide="alert-triangle" class="text-red-400 mr-3"></i>
+                        <p class="text-red-300">Stok untuk <span class="font-bold">${item.nama}</span> telah habis!</p>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                     <div class="bg-green-900/50 border border-green-700 p-4 rounded-lg flex items-center">
+                        <i data-lucide="check-circle" class="text-green-400 mr-3"></i>
+                        <p class="text-green-300">Semua stok obat dan peralatan aman.</p>
+                    </div>
+                `;
+            }
+            lucide.createIcons();
+        }
+
+        function updateDashboardStats() {
+            // Basic Stats
+            document.getElementById('totalSiswaStat').textContent = students.length;
+            const today = new Date().toISOString().slice(0, 10);
+            const sakitHariIni = healthLogs.filter(l => l.tanggal === today).length;
+            document.getElementById('sakitHariIniStat').textContent = sakitHariIni;
+            document.getElementById('totalSakitStat').textContent = healthLogs.length;
+            document.getElementById('stokKritisStat').textContent = inventory.filter(i => i.status === 'Kritis').length;
+
+            // Advanced Analytics
+            const analyzeFrequency = (data, key) => {
+                if (data.length === 0) return '-';
+                const counts = data.reduce((acc, item) => {
+                    acc[item[key]] = (acc[item[key]] || 0) + 1;
+                    return acc;
+                }, {});
+                return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+            };
+
+            document.getElementById('topSakitSiswa').textContent = analyzeFrequency(healthLogs, 'namaSiswa');
+            document.getElementById('topKeluhan').textContent = analyzeFrequency(healthLogs, 'keluhan');
+            
+            renderStokHabisAnnouncements();
+        }
+
+        // --- NAVIGATION & MODAL LOGIC ---
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+            document.querySelector(`.sidebar-item[onclick="showSection('${sectionId}')"]`).classList.add('active');
+            if(sectionId === 'profilAdmin') populateProfileForm();
+             if (window.innerWidth < 1024) {
+                closeSidebar();
+            }
+        }
+
+        function openModal(modalId) {
+            const form = document.getElementById(modalId).querySelector('form');
+            if(form) form.reset();
+            
+            const uniqueClasses = [...new Set(students.map(s => s.kelas))].sort();
+
+            if (modalId === 'modalSiswa') {
+                document.getElementById('siswaId').value = '';
+                document.getElementById('modalSiswaTitle').textContent = 'Tambah Siswa Baru';
+            } else if (modalId === 'modalSakit' || modalId === 'modalImunisasi') {
+                const formType = modalId === 'modalSakit' ? 'Sakit' : 'Imunisasi';
+                document.getElementById(`${formType.toLowerCase()}Id`).value = '';
+                document.getElementById(`modal${formType}Title`).textContent = `Tambah Catatan ${formType}`;
+                if(formType === 'Sakit') document.getElementById('tanggalSakit').valueAsDate = new Date();
+                
+                const kelasSelect = document.getElementById(`selectKelas${formType}`);
+                const siswaSelect = document.getElementById(`selectSiswa${formType}`);
+                
+                kelasSelect.innerHTML = '<option value="" disabled selected>Pilih Kelas...</option>';
+                uniqueClasses.forEach(kelas => {
+                    kelasSelect.innerHTML += `<option value="${kelas}">${kelas}</option>`;
+                });
+                siswaSelect.innerHTML = '<option value="" disabled selected>Pilih Kelas Dahulu</option>';
+                siswaSelect.disabled = true;
+
+            } else if (modalId === 'modalInventaris') {
+                document.getElementById('inventarisId').value = '';
+                document.getElementById('modalInventarisTitle').textContent = 'Tambah Barang Inventaris';
+            } else if (modalId === 'modalKegiatan') {
+                document.getElementById('kegiatanId').value = '';
+                document.getElementById('modalKegiatanTitle').textContent = 'Tambah Kegiatan';
+                document.getElementById('tanggalKegiatan').valueAsDate = new Date();
+            }
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function populateSiswaByKelas(formType) {
+            const kelasSelect = document.getElementById(`selectKelas${formType}`);
+            const siswaSelect = document.getElementById(`selectSiswa${formType}`);
+            const selectedKelas = kelasSelect.value;
+            
+            siswaSelect.innerHTML = '<option value="" disabled selected>Pilih Siswa...</option>';
+            const filteredStudents = students.filter(s => s.kelas === selectedKelas);
+            
+            filteredStudents.forEach(s => {
+                siswaSelect.innerHTML += `<option value="${s.nama}">${s.nama}</option>`;
+            });
+            siswaSelect.disabled = false;
+        }
+        
+        function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+        
+        function lihatFoto(fotoUrl) {
+            document.getElementById('fotoBuktiDetail').src = fotoUrl;
+            openModal('modalLihatFoto');
+        }
+
+        // --- CRUD LOGIC ---
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        // Form Handlers
+        async function handleFormSakit(event) {
+            event.preventDefault();
+            const id = document.getElementById('sakitId').value;
+            let buktiFotoData = null;
+            const fotoInput = document.getElementById('buktiFoto').files[0];
+            const namaSiswa = document.getElementById('selectSiswaSakit').value;
+            const siswaData = students.find(s => s.nama === namaSiswa);
+            
+            const data = {
+                tanggal: document.getElementById('tanggalSakit').value,
+                namaSiswa: namaSiswa,
+                kelas: siswaData ? siswaData.kelas : document.getElementById('selectKelasSakit').value,
+                keluhan: document.getElementById('keluhan').value,
+                tindakan: document.getElementById('tindakan').value,
+                status: document.getElementById('statusSakit').value,
+            };
+
+            if (id) { // Edit mode
+                const index = healthLogs.findIndex(l => l.id == id);
+                if (fotoInput) {
+                    buktiFotoData = await fileToBase64(fotoInput);
+                    healthLogs[index] = { ...healthLogs[index], ...data, buktiFoto: buktiFotoData };
+                } else {
+                    healthLogs[index] = { ...healthLogs[index], ...data };
+                }
+            } else { // Add mode
+                 if (fotoInput) {
+                    data.buktiFoto = await fileToBase64(fotoInput);
+                } else {
+                    data.buktiFoto = null;
+                }
+                data.id = Date.now();
+                healthLogs.unshift(data);
+            }
+            
+            saveToLocalStorage('uks_healthLogs', healthLogs);
+            closeModal('modalSakit');
+            renderTabelSakit();
+            updateDashboardStats();
+        }
+        
+        function handleFormSiswa(event) {
+            event.preventDefault();
+            const id = document.getElementById('siswaId').value;
+            const siswaData = {
+                nama: document.getElementById('nama').value.trim(),
+                nisn: document.getElementById('nisn').value.trim(),
+                jenisKelamin: document.getElementById('jenisKelamin').value,
+                kelas: document.getElementById('kelas').value.trim().toUpperCase(),
+            };
+            if (id) {
+                const index = students.findIndex(s => s.id == id);
+                students[index] = { ...students[index], ...siswaData };
+            } else {
+                siswaData.id = Date.now();
+                students.push(siswaData);
+            }
+            saveToLocalStorage('uks_students', students);
+            closeModal('modalSiswa');
+            renderDataSiswaByClass();
+            updateDashboardStats();
+        }
+        
+        function handleFormImunisasi(event) {
+            event.preventDefault();
+            const id = document.getElementById('imunisasiId').value;
+            const namaSiswa = document.getElementById('selectSiswaImunisasi').value;
+            const siswaData = students.find(s => s.nama === namaSiswa);
+
+            const data = {
+                namaSiswa: namaSiswa,
+                kelas: siswaData ? siswaData.kelas : document.getElementById('selectKelasImunisasi').value,
+                jenis: document.getElementById('jenisImunisasi').value,
+                tanggal: document.getElementById('tanggalImunisasi').value,
+                status: document.getElementById('statusImunisasi').value,
+            };
+             if (id) {
+                const index = immunizations.findIndex(i => i.id == id);
+                immunizations[index] = { ...immunizations[index], ...data };
+            } else {
+                data.id = Date.now();
+                immunizations.push(data);
+            }
+            saveToLocalStorage('uks_immunizations', immunizations);
+            closeModal('modalImunisasi');
+            renderTabelImunisasi();
+            updateDashboardStats();
+        }
+
+        function handleFormInventaris(event) {
+            event.preventDefault();
+            const id = document.getElementById('inventarisId').value;
+            const data = {
+                nama: document.getElementById('namaBarang').value,
+                jenis: document.getElementById('jenisBarang').value,
+                jumlah: document.getElementById('jumlahBarang').value,
+                satuan: document.getElementById('satuanBarang').value,
+                status: document.getElementById('statusBarang').value,
+            };
+             if (id) {
+                const index = inventory.findIndex(i => i.id == id);
+                inventory[index] = { ...inventory[index], ...data };
+            } else {
+                data.id = Date.now();
+                inventory.push(data);
+            }
+            saveToLocalStorage('uks_inventory', inventory);
+            closeModal('modalInventaris');
+            renderTabelInventaris();
+            updateDashboardStats();
+        }
+        
+        async function handleFormKegiatan(event) {
+            event.preventDefault();
+            const id = document.getElementById('kegiatanId').value;
+            const fotoInput = document.getElementById('fotoKegiatan').files[0];
+            const data = {
+                caption: document.getElementById('captionKegiatan').value,
+                tanggal: document.getElementById('tanggalKegiatan').value,
+                penanggungJawab: document.getElementById('penanggungJawab').value,
+                instansi: document.getElementById('asalInstansi').value,
+            };
+            
+            if (id) { // Edit mode
+                const index = uksActivities.findIndex(k => k.id == id);
+                if (fotoInput) {
+                    uksActivities[index] = { ...uksActivities[index], ...data, url: await fileToBase64(fotoInput) };
+                } else {
+                    uksActivities[index] = { ...uksActivities[index], ...data };
+                }
+            } else { // Add mode
+                let fotoUrl = null;
+                if(fotoInput) {
+                   fotoUrl = await fileToBase64(fotoInput);
+                }
+                uksActivities.push({ id: Date.now(), ...data, url: fotoUrl });
+            }
+            saveToLocalStorage('uks_activities', uksActivities);
+            closeModal('modalKegiatan');
+            renderTabelKegiatan();
+        }
+
+        // Edit Functions
+        function editSiswa(id) {
+            const siswa = students.find(s => s.id === id);
+            if (!siswa) return;
+            document.getElementById('modalSiswaTitle').textContent = 'Edit Data Siswa';
+            document.getElementById('siswaId').value = siswa.id;
+            document.getElementById('nama').value = siswa.nama;
+            document.getElementById('nisn').value = siswa.nisn;
+            document.getElementById('jenisKelamin').value = siswa.jenisKelamin;
+            document.getElementById('kelas').value = siswa.kelas;
+            openModal('modalSiswa');
+        }
+
+         function editSakit(id) {
+            const log = healthLogs.find(l => l.id === id);
+            if(!log) return;
+            openModal('modalSakit'); // Open modal first to populate class list
+            document.getElementById('modalSakitTitle').textContent = 'Edit Catatan Sakit';
+            document.getElementById('sakitId').value = log.id;
+            document.getElementById('tanggalSakit').value = log.tanggal;
+            document.getElementById('selectKelasSakit').value = log.kelas;
+            populateSiswaByKelas('Sakit');
+            document.getElementById('selectSiswaSakit').value = log.namaSiswa;
+            document.getElementById('keluhan').value = log.keluhan;
+            document.getElementById('tindakan').value = log.tindakan;
+            document.getElementById('statusSakit').value = log.status;
+        }
+
+        function editImunisasi(id) {
+            const item = immunizations.find(i => i.id === id);
+            if(!item) return;
+            openModal('modalImunisasi');
+            document.getElementById('modalImunisasiTitle').textContent = 'Edit Catatan Imunisasi';
+            document.getElementById('imunisasiId').value = item.id;
+            document.getElementById('selectKelasImunisasi').value = item.kelas;
+             populateSiswaByKelas('Imunisasi');
+            document.getElementById('selectSiswaImunisasi').value = item.namaSiswa;
+            document.getElementById('jenisImunisasi').value = item.jenis;
+            document.getElementById('tanggalImunisasi').value = item.tanggal;
+            document.getElementById('statusImunisasi').value = item.status;
+        }
+        
+        function editInventaris(id) {
+            const item = inventory.find(i => i.id === id);
+            if(!item) return;
+            document.getElementById('modalInventarisTitle').textContent = 'Edit Barang Inventaris';
+            document.getElementById('inventarisId').value = item.id;
+            document.getElementById('namaBarang').value = item.nama;
+            document.getElementById('jenisBarang').value = item.jenis;
+            document.getElementById('jumlahBarang').value = item.jumlah;
+            document.getElementById('satuanBarang').value = item.satuan;
+            document.getElementById('statusBarang').value = item.status;
+            openModal('modalInventaris');
+        }
+        
+        function editKegiatan(id) {
+            const item = uksActivities.find(k => k.id === id);
+            if(!item) return;
+            document.getElementById('modalKegiatanTitle').textContent = 'Edit Kegiatan';
+            document.getElementById('kegiatanId').value = item.id;
+            document.getElementById('captionKegiatan').value = item.caption;
+            document.getElementById('tanggalKegiatan').value = item.tanggal;
+            document.getElementById('penanggungJawab').value = item.penanggungJawab;
+            document.getElementById('asalInstansi').value = item.instansi;
+            openModal('modalKegiatan');
+        }
+        
+        // Delete Logic
+        function deleteSiswa(id) { showConfirmDelete('siswa', [id]); }
+
+        function handleMassDelete() {
+            const selectedIds = Array.from(document.querySelectorAll('.mass-delete-checkbox:checked')).map(cb => parseInt(cb.value));
+            if (selectedIds.length === 0) {
+                alert('Pilih siswa yang akan dihapus terlebih dahulu.');
+                return;
+            }
+            showConfirmDelete('siswa', selectedIds);
+        }
+
+        function deleteData(type, ids) { showConfirmDelete(type, ids); }
+
+        function showConfirmDelete(type, ids) {
+            deleteTarget = { type, ids };
+            const text = document.getElementById('konfirmasiText');
+            text.textContent = `Apakah Anda yakin ingin menghapus ${ids.length} data terpilih?`;
+            openModal('modalKonfirmasi');
+            document.getElementById('confirmDeleteButton').onclick = confirmDelete;
+        }
+        function cancelDelete() {
+            deleteTarget = { type: null, ids: [] };
+            closeModal('modalKonfirmasi');
+        }
+        function confirmDelete() {
+            const { type, ids } = deleteTarget;
+            if (type === 'siswa') {
+                students = students.filter(s => !ids.includes(s.id));
+                saveToLocalStorage('uks_students', students);
+                renderDataSiswaByClass();
+            } else if (type === 'sakit') {
+                healthLogs = healthLogs.filter(l => !ids.includes(l.id));
+                saveToLocalStorage('uks_healthLogs', healthLogs);
+                renderTabelSakit();
+            } else if (type === 'imunisasi') {
+                immunizations = immunizations.filter(i => !ids.includes(i.id));
+                saveToLocalStorage('uks_immunizations', immunizations);
+                renderTabelImunisasi();
+            } else if (type === 'inventaris') {
+                inventory = inventory.filter(i => !ids.includes(i.id));
+                saveToLocalStorage('uks_inventory', inventory);
+                renderTabelInventaris();
+            } else if (type === 'kegiatan') {
+                uksActivities = uksActivities.filter(k => !ids.includes(k.id));
+                saveToLocalStorage('uks_activities', uksActivities);
+                renderTabelKegiatan();
+            }
+            updateDashboardStats();
+            cancelDelete();
+        }
+
+        function toggleSelectAll(masterCheckbox, className) {
+            const slaveCheckboxes = document.querySelectorAll(`.mass-delete-checkbox[data-class="${className}"]`);
+            slaveCheckboxes.forEach(cb => cb.checked = masterCheckbox.checked);
+        }
+        
+        // Excel Import
+        function handleExcelImport(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                let importedCount = 0;
+                json.forEach(row => {
+                    if(row.Nama && row.NISN && row.JenisKelamin && row.Kelas) {
+                        students.push({
+                            id: Date.now() + Math.random(),
+                            nama: String(row.Nama).trim(),
+                            nisn: String(row.NISN).trim(),
+                            jenisKelamin: String(row.JenisKelamin).trim(),
+                            kelas: String(row.Kelas).trim().toUpperCase()
+                        });
+                        importedCount++;
+                    }
+                });
+                saveToLocalStorage('uks_students', students);
+                renderDataSiswaByClass();
+                updateDashboardStats();
+                alert(`${importedCount} data siswa berhasil diimpor.`);
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = ''; // Reset file input
+        }
+        
+        // EXPORT FUNCTIONS
+        function exportToPdf(tableId, title, orientation = 'p') {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: orientation,
+                unit: 'px',
+                format: 'a4'
+            });
+            doc.autoTable({ 
+                html: `#${tableId}`,
+                styles: {
+                    fillColor: [31, 41, 55], 
+                    textColor: [209, 213, 219], 
+                    lineColor: [55, 65, 81]
+                },
+                headStyles: {
+                    fillColor: [79, 70, 229]
+                },
+                margin: { top: 20 }
+            });
+            doc.save(`${title}.pdf`);
+        }
+
+        function exportToExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
+            const wb = XLSX.utils.table_to_book(table, {sheet:"Sheet1"});
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+        }
+
+
+        // --- CHART LOGIC ---
+        function initializeChart() {
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('visitChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
+                    datasets: [{
+                        label: 'Jumlah Kunjungan',
+                        data: [5, 8, 4, 10, 6, 2],
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                        borderColor: '#4f46e5',
+                        borderWidth: 2, tension: 0.4, fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#374151' }, ticks: { color: '#9ca3af' } },
+                        x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }
+                    },
+                    plugins: { legend: { labels: { color: '#9ca3af' } } }
+                }
+            });
+        }
+
+        // --- AUTH & PROFILE LOGIC ---
+        function showAuthPage(pageId) {
+            document.getElementById('landingPage').classList.add('hidden');
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById(pageId).classList.remove('hidden');
+        }
+        
+        function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('loginError');
+            if (username === adminCredentials.username && password === adminCredentials.password) {
+                document.getElementById('authContainer').classList.add('hidden');
+                document.getElementById('appContainer').classList.remove('hidden');
+            
+                initializeApp();
+            } else {
+                errorMsg.classList.remove('hidden');
+            }
+        }
+        
+        function handleLogout() {
+            document.getElementById('appContainer').classList.add('hidden');
+            document.getElementById('authContainer').classList.remove('hidden');
+            document.getElementById('loginForm').reset();
+            showAuthPage('landingPage');
+        }
+        
+        function populateProfileForm() {
+            document.getElementById('adminUsername').value = adminCredentials.username;
+            document.getElementById('adminPassword').value = '';
+        }
+
+        function handleUpdateProfile(event) {
+            event.preventDefault();
+            const newUsername = document.getElementById('adminUsername').value;
+            const newPassword = document.getElementById('adminPassword').value;
+            const successMsg = document.getElementById('profileUpdateSuccess');
+            
+            adminCredentials.username = newUsername;
+            if (newPassword) {
+                adminCredentials.password = newPassword;
+            }
+            saveToLocalStorage('uks_adminCredentials', adminCredentials);
+            successMsg.classList.remove('hidden');
+            setTimeout(() => { successMsg.classList.add('hidden'); }, 3000);
+            
+            document.getElementById('adminPassword').value = '';
+        }
+
+        function displayCurrentDate() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateString = now.toLocaleDateString('id-ID', options);
+            const desktopDate = document.getElementById('currentDateDisplay');
+            const mobileDate = document.getElementById('currentDateDisplayMobile');
+            if (desktopDate) desktopDate.textContent = dateString;
+            if (mobileDate) mobileDate.textContent = dateString;
+        }
+
+        function initializeFooter() {
+            const yearSpan = document.getElementById('footerYear');
+            if(yearSpan) {
+                yearSpan.textContent = new Date().getFullYear();
+            }
+        }
+
+        // --- Sidebar Toggle for Mobile ---
+        function openSidebar() {
+            document.getElementById('sidebar').classList.remove('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.remove('hidden');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebar-overlay').classList.add('hidden');
+        }
+
+        // --- INITIALIZATION ---
+        function initializeApp() {
+            lucide.createIcons();
+            displayCurrentDate();
+            initializeFooter();
+            showSection('dashboard');
+            renderDataSiswaByClass();
+            renderTabelSakit();
+            renderTabelImunisasi();
+            renderTabelInventaris();
+            renderTabelKegiatan();
+            updateDashboardStats();
+            initializeChart();
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            showAuthPage('landingPage');
+        };
+    </script>
+</body>
+</html>
+
